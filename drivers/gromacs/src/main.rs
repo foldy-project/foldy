@@ -4,6 +4,9 @@
 // simplest method of use, but sacrifices some flexibility.
 use clap::Clap;
 
+extern crate sal;
+use sal::*;
+
 /// This doc string acts as a help message when the user runs '--help'
 /// as do all doc strings on fields
 #[derive(Clap)]
@@ -13,7 +16,7 @@ struct Opts {
     #[clap(short = "c", long = "config", default_value = "default.conf")]
     config: String,
     /// Some input. Because this isn't an Option<T> it's required to be used
-    input: String,
+    input: Option<String>,
     /// A level of verbosity, and can be used multiple times
     #[clap(short = "v", long = "verbose", parse(from_occurrences))]
     verbose: i32,
@@ -41,7 +44,7 @@ fn main() {
 
     // Gets a value for config if supplied by user, or defaults to "default.conf"
     println!("Value for config: {}", opts.config);
-    println!("Using input file: {}", opts.input);
+    println!("Using input file: {:?}", opts.input);
 
     // Vary the output based on how many times the user used the "verbose" flag
     // (i.e. 'myprog -v -v -v' or 'myprog -vvv' vs 'myprog -v'

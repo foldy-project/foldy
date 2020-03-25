@@ -1,15 +1,19 @@
 FROM rust:latest AS builder
+RUN rustup toolchain install nightly \
+    && rustup default nightly
 ENV USER=root
-RUN cargo new app
-WORKDIR /app
-COPY Cargo.toml .
-COPY Cargo.lock .
-RUN cargo build
+RUN mkdir -p /foldy/drivers \
+    && cd /foldy/drivers \
+    && cargo new gromacs \
+    && rm gromacs/Cargo.toml
+WORKDIR /foldy
+COPY sal sal
+COPY drivers/gromacs/Cargo.toml drivers/gromacs/Cargo.toml
+COPY drivers/gromacs/Cargo.lock drivers/gromacs/Cargo.lock
+RUN cd drivers/gromacs && cargo build
 COPY . .
-RUN cargo build
-RUN cargo test
 
 FROM gromacs/gromacs:latest
 WORKDIR /foldy
-COPY --from=builder /app/target/debug/gromacs-driver gromacs-driver
+COPY --from=builder /foldy/drivers/gromacs/target/debug/gromacs-driver gromacs-driver
 CMD ["./gromacs-driver"]
