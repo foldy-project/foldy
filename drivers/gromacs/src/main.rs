@@ -5,7 +5,6 @@
 use clap::Clap;
 
 extern crate sal;
-use sal::*;
 
 /// This doc string acts as a help message when the user runs '--help'
 /// as do all doc strings on fields

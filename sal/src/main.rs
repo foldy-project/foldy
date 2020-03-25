@@ -19,7 +19,6 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    pub use crate::server::*;
     use super::*;
 
     #[test]

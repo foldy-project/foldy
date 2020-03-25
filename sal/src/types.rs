@@ -142,37 +142,42 @@ impl Default for RunResponse {
     }
 }
 
-pub(crate) struct MockBackend {
-    error: Option<&'static str>,
-}
+pub mod mock {
+    use super::*;
 
-impl MockBackend {
-    pub(crate) fn new() -> MockBackend {
-        MockBackend { error: None }
+    pub struct MockBackend {
+        error: Option<&'static str>,
     }
 
-    pub(crate) fn error(message: &'static str) -> MockBackend {
-        MockBackend {
-            error: Some(message),
+    impl MockBackend {
+        pub fn new() -> MockBackend {
+            MockBackend { error: None }
+        }
+
+        pub fn error(message: &'static str) -> MockBackend {
+            MockBackend {
+                error: Some(message),
+            }
         }
     }
-}
 
-impl Backend for MockBackend {
-    fn run(&self, _: RunRequest) -> Result<RunResponse, String> {
-        match self.error {
-            Some(msg) => Err(String::from(msg)),
-            None => Ok(Default::default()),
+    impl Backend for MockBackend {
+        fn run(&self, _: RunRequest) -> Result<RunResponse, String> {
+            match self.error {
+                Some(msg) => Err(String::from(msg)),
+                None => Ok(Default::default()),
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod test {
+    use super::mock::*;
     use super::*;
 
     mod backend {
-        use super::super::*;
+        use super::*;
 
         #[test]
         fn test_run_ok() {

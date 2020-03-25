@@ -52,7 +52,7 @@ fn index() -> &'static str {
 }
 
 #[catch(400)]
-fn bad_request(req: &Request) -> JsonValue {
+fn bad_request(_: &Request) -> JsonValue {
     json!({"error": "error deserializing request"})
 }
 
@@ -173,6 +173,7 @@ impl<'a> Responder<'a> for RunResponse {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::types::mock::*;
     use rocket::local::Client;
 
     #[test]
