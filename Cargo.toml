@@ -1,0 +1,6 @@
+[workspace]
+default-members = ["sal", "driver/gromacs"]
+members = [
+  "sal",
+  "driver/gromacs",
+]
