@@ -64,6 +64,14 @@ fn backend_run(data: RunRequest, svc: State<Box<dyn Backend>>) -> RunResponse {
     }
 }
 
+#[post("/Backend.Test", format = "json", data = "<data>")]
+fn backend_test(data: TestRequest, svc: State<Box<dyn Backend>>) -> TestResponse {
+    match svc.test(data) {
+        Ok(resp) => resp,
+        Err(msg) => TestResponse::error(msg),
+    }
+}
+
 pub struct BackendServer {
     rocket: rocket::Rocket,
 }
@@ -80,7 +88,7 @@ impl BackendServer {
             .unwrap();
         let rocket = rocket::custom(config)
             .register(catchers![bad_request])
-            .mount("/oto", routes![index, backend_run,])
+            .mount("/oto", routes![index, backend_run, backend_test,])
             .manage(svc);
         BackendServer { rocket }
     }
@@ -170,6 +178,67 @@ impl<'a> Responder<'a> for RunResponse {
     }
 }
 
+impl FromDataSimple for TestRequest {
+    type Error = String;
+
+    fn from_data(req: &Request, data: Data) -> Outcome<Self, String> {
+        let json_ct = ContentType::new("application", "json");
+        if req.content_type() != Some(&json_ct) {
+            return Outcome::Forward(data);
+        }
+        let mut body = String::new();
+        if let Err(e) = data.open().read_to_string(&mut body) {
+            return Failure((Status::InternalServerError, format!("{:?}", e)));
+        }
+        match serde_json::from_str::<TestRequest>(&body) {
+            Ok(value) => Success(value),
+            Err(e) => Failure((Status::BadRequest, format!("{:?}", e))),
+        }
+    }
+}
+
+impl FromDataSimple for TestResponse {
+    type Error = String;
+
+    fn from_data(req: &Request, data: Data) -> Outcome<Self, String> {
+        let json_ct = ContentType::new("application", "json");
+        if req.content_type() != Some(&json_ct) {
+            return Outcome::Forward(data);
+        }
+        let mut body = String::new();
+        if let Err(e) = data.open().read_to_string(&mut body) {
+            return Failure((Status::InternalServerError, format!("{:?}", e)));
+        }
+        match serde_json::from_str::<TestResponse>(&body) {
+            Ok(value) => Success(value),
+            Err(e) => Failure((Status::BadRequest, format!("{:?}", e))),
+        }
+    }
+}
+
+impl<'a> Responder<'a> for TestResponse {
+    fn respond_to(self, _: &Request) -> response::Result<'a> {
+        let (status, body) = match self.is_error() {
+            true => (
+                Status::InternalServerError,
+                error_json(self.get_error().unwrap()),
+            ),
+            false => match serde_json::to_string(&self) {
+                Ok(body) => (Status::Ok, body),
+                Err(e) => {
+                    let msg = format!("{}", &e);
+                    (Status::InternalServerError, error_json(&msg))
+                }
+            },
+        };
+        Response::build()
+            .header(ContentType::JSON)
+            .status(status)
+            .sized_body(Cursor::new(body))
+            .ok()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -219,6 +288,59 @@ mod test {
         let client = Client::new(server.rocket).expect("valid rocket instance");
         let mut response = client
             .post("/oto/Backend.Run")
+            .header(ContentType::JSON)
+            .body(String::from("asdjfmmvzzi"))
+            .dispatch();
+        assert_eq!(response.status(), Status::BadRequest);
+        assert_eq!(
+            response.body_string(),
+            Some("{\"error\":\"error deserializing request\"}".into())
+        );
+    }
+
+    #[test]
+    fn test_backend_test_ok() {
+        let server = BackendServer::new(Box::new(MockBackend::new()));
+        let client = Client::new(server.rocket).expect("valid rocket instance");
+        let req = TestRequest::new();
+        let body = serde_json::to_string(&req).unwrap();
+        let mut response = client
+            .post("/oto/Backend.Test")
+            .header(ContentType::JSON)
+            .body(body)
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::JSON));
+        let expected = TestResponse::new();
+        let expected_json = serde_json::to_string(&expected).unwrap();
+        assert_eq!(response.body_string(), Some(expected_json.into()));
+    }
+
+    #[test]
+    fn test_backend_test_error() {
+        let server = BackendServer::new(Box::new(MockBackend::error("purple")));
+        let client = Client::new(server.rocket).expect("valid rocket instance");
+        let req = TestRequest::new();
+        let body = serde_json::to_string(&req).unwrap();
+        let mut response = client
+            .post("/oto/Backend.Test")
+            .header(ContentType::JSON)
+            .body(body)
+            .dispatch();
+        assert_eq!(response.status(), Status::InternalServerError);
+        assert_eq!(response.content_type(), Some(ContentType::JSON));
+        assert_eq!(
+            response.body_string(),
+            Some("{\"error\":\"purple\"}".into())
+        );
+    }
+
+    #[test]
+    fn test_backend_test_bad_request() {
+        let server = BackendServer::new(Box::new(MockBackend::error("purple")));
+        let client = Client::new(server.rocket).expect("valid rocket instance");
+        let mut response = client
+            .post("/oto/Backend.Test")
             .header(ContentType::JSON)
             .body(String::from("asdjfmmvzzi"))
             .dispatch();

@@ -2,6 +2,7 @@ package definitions
 
 type Backend interface {
 	Run(RunRequest) RunResponse
+	Test(TestRequest) TestResponse
 }
 
 type GromacsConfig struct {
@@ -24,4 +25,10 @@ type RunRequest struct {
 
 type RunResponse struct {
 	// Output information
+}
+
+type TestRequest struct {
+}
+
+type TestResponse struct {
 }

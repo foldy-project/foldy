@@ -4,6 +4,7 @@ use serde_json::{Map, Value};
 
 pub trait Backend: Send + Sync {
     fn run(&self, req: RunRequest) -> Result<RunResponse, String>;
+    fn test(&self, req: TestRequest) -> Result<TestResponse, String>;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -142,6 +143,62 @@ impl Default for RunResponse {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct TestRequest {}
+
+impl TestRequest {
+    pub fn new() -> Self {
+        TestRequest {}
+    }
+
+    pub fn make() -> Self {
+        TestRequest {}
+    }
+}
+
+impl Default for TestRequest {
+    fn default() -> TestRequest {
+        TestRequest::new()
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TestResponse {
+    error: Option<String>,
+}
+
+impl TestResponse {
+    pub fn new() -> Self {
+        TestResponse { error: None }
+    }
+
+    pub fn make() -> Self {
+        TestResponse { error: None }
+    }
+
+    pub fn error(msg: String) -> Self {
+        TestResponse { error: Some(msg) }
+    }
+
+    pub(crate) fn is_error(&self) -> bool {
+        self.error != None
+    }
+
+    pub(crate) fn get_error(&self) -> Option<&String> {
+        self.error.as_ref()
+    }
+
+    pub(crate) fn take_error(&mut self) -> Option<String> {
+        self.error.take()
+    }
+}
+
+impl Default for TestResponse {
+    fn default() -> TestResponse {
+        TestResponse::new()
+    }
+}
+
 pub mod mock {
     use super::*;
 
@@ -168,6 +225,13 @@ pub mod mock {
                 None => Ok(Default::default()),
             }
         }
+
+        fn test(&self, _: TestRequest) -> Result<TestResponse, String> {
+            match self.error {
+                Some(msg) => Err(String::from(msg)),
+                None => Ok(Default::default()),
+            }
+        }
     }
 }
 
@@ -189,6 +253,19 @@ mod test {
         fn test_run_error() {
             MockBackend::error("quaranstream")
                 .run(Default::default())
+                .expect("should panic because its an error");
+        }
+
+        #[test]
+        fn test_test_ok() {
+            assert!(MockBackend::new().test(Default::default()).is_ok());
+        }
+
+        #[test]
+        #[should_panic]
+        fn test_test_error() {
+            MockBackend::error("quaranstream")
+                .test(Default::default())
                 .expect("should panic because its an error");
         }
     }
