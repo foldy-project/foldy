@@ -1,0 +1,15 @@
+apiVersion: v1
+description: Foldy Operator is a Kubernetes-native application for protein structure prediction research
+name: foldy-ci
+version: 0.0.0
+appVersion: master
+keywords:
+- protein
+- structure
+- prediction
+home: https://foldy.dev
+sources:
+- https://github.com/foldy-project/foldy
+maintainers:
+- name: Tom
+  email: maintainer@foldy.dev

@@ -1,0 +1,24 @@
+# Source: https://www.reddit.com/r/Traefik/comments/d36iry/traefik_20_with_certmanager/
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/ingress.class: fake
+  labels:
+    traefik2: "true"
+  name: argocd-ingress
+  namespace: argo-cd
+spec:
+  rules:
+  - host: argocd.foldy.dev
+    http:
+      paths:
+      - backend:
+          serviceName: argocd-server
+          servicePort: 80
+        path: /
+  tls:
+  - hosts:
+    - argocd.foldy.dev
+    secretName: argocd-foldy-dev-tls

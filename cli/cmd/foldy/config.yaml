@@ -1,0 +1,23 @@
+# API endpoint for foldy CLI
+# This can be http or https, and the correct client will be used.
+# Another valid usage is to `kubectl port-forward` into the foldy-api
+# service and pointing this at localhost 
+endpoint: https://api.foldy.dev
+
+# If true, all mutating commands are printed to stdout.
+# Verbose has a special meaning in the foldy CLI. There is the
+# guarantee that all mutating commands are bash commands.
+# allowing the user to easily observe and understand the
+# underlying operations when verbose output is enabled.
+#
+# The CLI attempts to provide both convenience and education.
+# It should not obscure what is happening to your cluster.
+# Rather, it should make complicated installation procedures
+# and other interactions more observable.
+verbose: true
+
+argocd:
+  # The new image for the Argo CD deployments. This image
+  # must include Helm v3+ for the traefik2 helm chart to
+  # install correctly.
+  image: argoproj/argocd:v1.5.0-rc1

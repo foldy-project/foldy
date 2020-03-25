@@ -1,0 +1,69 @@
+{{- if .Values.ingress.enabled }}
+# Source: https://www.reddit.com/r/Traefik/comments/d36iry/traefik_20_with_certmanager/
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Release.Name }}-letsencrypt-prod
+    kubernetes.io/ingress.class: fake
+  labels:
+    traefik2: "true"
+  name: events-foldy-dev
+  namespace: argo-events
+spec:
+  rules:
+  - host: events.foldy.dev
+    http:
+      paths:
+      - backend:
+          serviceName: github-gateway-svc
+          servicePort: 12000
+        path: /
+  tls:
+  - hosts:
+    - events.foldy.dev
+    secretName: events-foldy-dev-tls
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: https-only
+  namespace: argo-events
+spec:
+  redirectScheme:
+    scheme: https
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: events-foldy-dev-80
+  namespace: argo-events
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`events.foldy.dev`) && PathPrefix(`/`)
+      kind: Rule
+      middlewares:
+        - name: https-only
+      services:
+        - name: github-gateway-svc
+          port: 12000
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: events-foldy-dev-tls
+  namespace: argo-events
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`events.foldy.dev`) && PathPrefix(`/`)
+      kind: Rule
+      services:
+        - name: github-gateway-svc
+          port: 12000
+  tls:
+    secretName: events-foldy-dev-tls
+{{- end }}

@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-ui
+  namespace: argocd
+  # https://argoproj.github.io/argo-cd/operator-manual/declarative-setup/
+  # By default, deleting an application will not perform a cascade delete, thereby deleting its resources. You must add the finalizer if you want this behaviour - which you may well not want.
+  {{- if .Values.enableFinalizers }}
+  # https://argoproj.github.io/argo-cd/operator-manual/declarative-setup/
+  # By default, deleting an application will not perform a cascade delete, thereby deleting its resources. You must add the finalizer if you want this behaviour - which you may well not want.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  {{- end }}
+spec:
+  project: {{ .Values.project }}
+  source:
+    repoURL: {{ .Values.ui.repoURL }}
+    targetRevision: HEAD
+    path: {{ .Values.ui.path }}
+    helm:
+        releaseName: {{ .Release.Name }}
+        values: |
+          ingress:
+            clusterIssuerName: {{ .Release.Name }}-letsencrypt-prod
+
+  # Destination cluster and namespace to deploy the application
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Release.Namespace }}
+
+  # Sync policy
+  syncPolicy:
+    automated:
+      prune: true # Specifies if resources should be pruned during auto-syncing ( false by default ).
+      selfHeal: true # Specifies if partial app sync should be executed when resources are changed only in target Kubernetes cluster and no git change detected ( false by default ).
+    validate: true # Validate resources before applying to k8s, defaults to true.

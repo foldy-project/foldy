@@ -1,0 +1,88 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: foldy-letsencrypt-prod
+    kubernetes.io/ingress.class: fake
+  labels:
+    traefik2: "true"
+  name: foldy-ui
+spec:
+  rules:
+  - host: ui.foldy.dev
+    http:
+      paths:
+      - backend:
+          serviceName: foldy-ui
+          servicePort: 80
+        path: /
+  tls:
+  - hosts:
+    - ui.foldy.dev
+    secretName: ui-foldy-dev-tls
+## Source: https://www.reddit.com/r/Traefik/comments/d36iry/traefik_20_with_certmanager/
+#apiVersion: extensions/v1beta1
+#kind: Ingress
+#metadata:
+#  annotations:
+#    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuerName }}
+#    kubernetes.io/ingress.class: fake
+#  labels:
+#    traefik2: "true"
+#  name: {{ .Release.Name }}-ui-ingress
+#spec:
+#  rules:
+#  - host: {{ .Values.ingress.host }}
+#    http:
+#      paths:
+#      - backend:
+#          serviceName: {{ .Release.Name }}-ui
+#          servicePort: 80
+#        path: /
+#  tls:
+#  - hosts:
+#    - {{ .Values.ingress.host }}
+#    secretName: {{ .Release.Name }}-ui-tls
+#---
+#apiVersion: traefik.containo.us/v1alpha1
+#kind: Middleware
+#metadata:
+#  name: {{ .Release.Name }}-ui-https-only
+#spec:
+#  redirectScheme:
+#    scheme: https
+#---
+#apiVersion: traefik.containo.us/v1alpha1
+#kind: IngressRoute
+#metadata:
+#  name: {{ .Release.Name }}-ui-80
+#spec:
+#  entryPoints:
+#    - web
+#  routes:
+#    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/`)
+#      kind: Rule
+#      middlewares:
+#        - name: {{ .Release.Name }}-ui-https-only
+#      services:
+#        - name: {{ .Release.Name }}-ui
+#          port: 80
+#---
+#apiVersion: traefik.containo.us/v1alpha1
+#kind: IngressRoute
+#metadata:
+#  name: {{ .Release.Name }}-ui-tls
+#spec:
+#  entryPoints:
+#    - websecure
+#  routes:
+#    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/`)
+#      kind: Rule
+#      services:
+#        - name: {{ .Release.Name }}-ui
+#          port: 80
+#  tls:
+#    secretName: {{ .Release.Name }}-ui-tls
+#
+{{- end }}

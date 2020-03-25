@@ -1,0 +1,93 @@
+package installer
+
+import "github.com/hashicorp/go-multierror"
+
+func init() {
+	AddComponent(&ApplicationComponent{
+		Name:    "traefik",
+		RepoURL: "https://github.com/containous/traefik-helm-chart.git",
+		Path:    "traefik",
+		CRDs: []string{
+			"ingressroutes.traefik.containo.us",
+			"ingressroutetcps.traefik.containo.us",
+			"middlewares.traefik.containo.us",
+			"tlsoptions.traefik.containo.us",
+			"traefikservices.traefik.containo.us",
+		},
+		PreInstall: func(s *Installer) error {
+			// Argo CD apparently doesn't install CRDs in the crds/ dir yet, a la Helm v3
+			crdPaths := []string{
+				"https://raw.githubusercontent.com/containous/traefik-helm-chart/master/traefik/crds/ingressroute.yaml",
+				"https://raw.githubusercontent.com/containous/traefik-helm-chart/master/traefik/crds/ingressroutetcp.yaml",
+				"https://raw.githubusercontent.com/containous/traefik-helm-chart/master/traefik/crds/middlewares.yaml",
+				"https://raw.githubusercontent.com/containous/traefik-helm-chart/master/traefik/crds/tlsoptions.yaml",
+				"https://raw.githubusercontent.com/containous/traefik-helm-chart/master/traefik/crds/traefikservices.yaml",
+			}
+			dones := make([]chan error, len(crdPaths), len(crdPaths))
+			for i, crdPath := range crdPaths {
+				done := make(chan error, 1)
+				dones[i] = done
+				go func(crdPath string, done chan<- error) {
+					defer close(done)
+					done <- s.exec("kubectl apply -f %s", crdPath)
+				}(crdPath, done)
+			}
+			var multi error
+			for _, done := range dones {
+				if err := <-done; err != nil {
+					multi = multierror.Append(multi, err)
+				}
+			}
+			return multi
+		},
+	})
+}
+
+//func (s *Installer) InstallTraefik() error {
+//if err := s.createNamespace("traefik"); err != nil {
+//	return err
+//}
+//if err := s.exec("helm repo add traefik https://containous.github.io/traefik-helm-chart"); err != nil {
+//	return err
+//}
+//if err := s.exec("helm repo update"); err != nil {
+//	return err
+//}
+//if err := s.exec(`helm install traefik traefik/traefik -n traefik --set additionalArguments[0]=--providers.kubernetesingress=true --set additionalArguments[1]=--providers.kubernetesingress.ingressclass=traefik2`); err != nil {
+//	msg := `exit status 1: Error: cannot re-use a name that is still in use`
+//	if strings.TrimSpace(err.Error()) != msg {
+//		return err
+//	}
+//	log.Printf("traefik helm chart already installed - skipping installation")
+//}
+//return nil
+//}
+
+//func (s *Installer) UninstallTraefik() error {
+// Uninstall traefik helm chart. Give it some time
+// to exit gracefully, but ultimately move onto
+// deleting the namespace so uninstall doesn't fail.
+//go func() {
+//	defer close(done)
+//	if err := s.exec("helm delete -n traefik traefik"); err != nil {
+//		msg := `exit status 1: Error: uninstall: Release not loaded: traefik: release: not found`
+//		if strings.TrimSpace(err.Error()) != msg {
+//			done <- err
+//			return
+//		}
+//	}
+//	done <- nil
+//}()
+//select {
+//case <-done:
+//case <-time.After(time.Minute):
+//	log.Printf("Warning: helm chart not deleted after one minute. Proceeding with uninstallation...")
+//}
+//
+//// Delete traefik namespace
+//namespaceDeleted := make(chan error, 1)
+//go func() {
+//	defer close(namespaceDeleted) // I prefer this syntax
+//	namespaceDeleted <- s.deleteNamespace("traefik")
+//}()
+//}

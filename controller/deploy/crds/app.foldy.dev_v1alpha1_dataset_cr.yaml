@@ -1,0 +1,30 @@
+# Defines an example dataset for the wwpdb.org FTP.
+# A simple S3 cache configuration is also provided.
+apiVersion: app.foldy.dev/v1alpha1
+kind: Dataset
+metadata:
+  name: example-dataset
+spec:
+  type: remote
+  # Directory root on the remote on the remote host.
+  source: ftp://ftp.wwpdb.org/pub/pdb/data/structures/all/pdb/
+  # Other examples:
+  #
+  #source: http://my-insecure-website.com/
+  #
+  insecure: true
+  cache:
+    s3:
+      endpoint: http://minio:9000
+      bucket: wwpdb
+      prefix: pdb/ # Put the structures in the pdb/ folder
+      accessKeyId:
+        valueFrom:
+          secretKeyRef:
+            name: minio-cred
+            key: key
+      accessSecret:
+        valueFrom:
+          secretKeyRef:
+            name: minio-cred
+            key: secret

@@ -1,0 +1,28 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: cert-manager.io/v1alpha2
+kind: ClusterIssuer
+metadata:
+  name: {{ .Release.Name }}-letsencrypt-prod
+spec:
+  acme:
+    # You must replace this email address with your own.
+    # Let's Encrypt will use this to contact you about expiring
+    # certificates, and issues related to your account.
+    email: {{ .Values.ingress.email }}
+    #server: https://acme-v02.api.letsencrypt.org/directory
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      # Secret resource that will be used to store the account's private key.
+      name: {{ .Release.Name }}-letsencrypt-prod
+    # Add a single challenge solver, HTTP)01 using nginx
+    solvers:
+    - http01:
+        ingress:
+          class: traefik
+    - selector: 
+        matchLabels:
+          traefik2: "true"    
+      http01:
+        ingress:
+          class: traefik2
+{{- end }}

@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+image=foldy/foldy-controller:latest
+docker build -f build/Dockerfile -t $image ..
+docker push $image

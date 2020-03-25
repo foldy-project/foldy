@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foldy-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: foldy-controller
+  template:
+    metadata:
+      labels:
+        name: foldy-controller
+    spec:
+      serviceAccountName: foldy-controller
+      containers:
+        - name: foldy-controller
+          # Replace this with the built image name
+          image: foldy/foldy-controller
+          command:
+          - foldy-controller
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "foldy-controller"

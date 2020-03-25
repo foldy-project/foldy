@@ -1,0 +1,5 @@
+image: foldy/foldy-ui:latest
+ingress:
+    enabled: false
+    host: ui.foldy.dev
+    clusterIssuerName: letsencrypt-prod

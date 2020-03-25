@@ -1,0 +1,142 @@
+{{- if .Values.ingress.enabled }}
+# Info on GitHub Webhook: https://developer.github.com/v3/repos/hooks/#create-a-hook
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: github-event-source
+  namespace: argo-events
+spec:
+  type: "github"
+  github:
+    operator:
+      # https://github.com/argoproj/argo-events/issues/429
+      namespace: argo-events
+      # owner of the repo
+      owner: "foldy-project"
+      # repository name
+      repository: "foldy"
+      # Github will send events to following port and endpoint
+      webhook:
+        # endpoint to listen to events on
+        endpoint: "/push"
+        # port to run internal HTTP server on
+        port: "12000"
+        # HTTP request method to allow. In this case, only POST requests are accepted
+        method: "POST"
+        # url the gateway will use to register at Github.
+        # This url must be reachable from outside the cluster.
+        # The gateway pod is backed by the service defined in the gateway spec. So get the URL for that service Github can reach to.
+        url: "https://events.foldy.dev"
+      # type of events to listen to.
+      # following listens to everything, hence *
+      # You can find more info on https://developer.github.com/v3/activity/events/types/
+      events:
+        - push
+      # apiToken refers to K8s secret that stores the github api token
+      apiToken:
+        # Name of the K8s secret that contains the access token
+        name: github-access
+        # Key within the K8s secret whose corresponding value (must be base64 encoded) is access token
+        key: token
+      # webhookSecret refers to K8s secret that stores the github hook secret
+      webhookSecret:
+        # Name of the K8s secret that contains the hook secret
+        name: github-access
+        # Key within the K8s secret whose corresponding value (must be base64 encoded) is hook secret
+        key: secret
+      # type of the connection between gateway and Github
+      insecure: false
+      # Determines if notifications are sent when the webhook is triggered
+      active: true
+      # The media type used to serialize the payloads
+      contentType: "json"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Gateway
+metadata:
+  name: github-gateway
+  namespace: argo-events
+  labels:
+    # gateway controller with instanceId "argo-events" will process this gateway
+    gateways.argoproj.io/gateway-controller-instanceid: argo-events
+spec:
+  type: github
+  eventSourceRef:
+    name: github-event-source
+  template:
+    metadata:
+      name: github-gateway
+      labels:
+        gateway-name: github-gateway
+    spec:
+      containers:
+        - name: gateway-client
+          image: argoproj/gateway-client:v0.13.0-rc
+          imagePullPolicy: Always
+          command: ["/bin/gateway-client"]
+        - name: github-events
+          image: argoproj/github-gateway:v0.13.0-rc
+          imagePullPolicy: Always
+          command: ["/bin/github-gateway"]
+      serviceAccountName: argo-events-sa
+  service:
+    metadata:
+      name: github-gateway-svc
+    spec:
+      selector:
+        gateway-name: github-gateway
+      ports:
+        - port: 12000
+          targetPort: 12000
+      type: ClusterIP
+  subscribers:
+    http:
+      - "http://github-sensor.argo-events.svc:9300/"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: github-sensor
+  namespace: argo-events
+  labels:
+    # sensor controller with instanceId "argo-events" will process this sensor
+    sensors.argoproj.io/sensor-controller-instanceid: argo-events
+spec:
+  template:
+    spec:
+      containers:
+        - name: sensor
+          image: argoproj/sensor:v0.13.0-rc
+          imagePullPolicy: Always
+      serviceAccountName: argo-events-sa
+  dependencies:
+    - name: push-dep
+      gatewayName: github-gateway
+      eventName: operator
+  subscription:
+    http:
+      port: 9300
+  triggers:
+    - template:
+        name: webhook-workflow-trigger
+        k8s:
+          group: argoproj.io
+          version: v1alpha1
+          resource: workflows
+          operation: create
+          source:
+            git:
+              url: https://github.com/foldy-project/foldy-operator.git
+              cloneDirectory: /app
+              filePath: ci-workflow.yaml
+              branch: master
+          parameters:
+            - src:
+                dependencyName: push-dep
+                dataKey: head_commit.id
+              dest: spec.arguments.parameters.0.value
+            - src:
+                dependencyName: push-dep
+                dataKey: head_commit.modified
+              dest: spec.arguments.parameters.1.value
+{{- end }}

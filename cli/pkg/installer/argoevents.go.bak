@@ -1,0 +1,14 @@
+package installer
+
+func init() {
+	AddComponent(&ApplicationComponent{
+		Name:    "argo-events",
+		RepoURL: "https://github.com/argoproj/argo-helm.git",
+		Path:    "charts/argo-events",
+		CRDs: []string{
+			"eventsources.argoproj.io",
+			"gateways.argoproj.io",
+			"sensors.argoproj.io",
+		},
+	})
+}

@@ -1,0 +1,44 @@
+# The destination Argo CD project name that will receive
+# the foldy installation.
+project: default
+
+helmv2: false
+
+enableFinalizers: false
+
+ingress:
+    enabled: false
+    email: admin@foldy.dev
+    argocd:
+        host: argocd.foldy.dev
+
+controller:
+    repoURL: https://github.com/foldy-project/foldy
+    path: charts/controller
+
+ui:
+    repoURL: https://github.com/foldy-project/foldy
+    path: charts/ui
+
+argo:
+    repoURL: https://github.com/argoproj/argo-helm.git
+    path: charts/argo
+
+events: # argo-events
+    repoURL: https://github.com/argoproj/argo-helm.git
+    path: charts/argo-events
+
+#certmanager:
+#    enabled: true
+#    repoURL: https://github.com/foldy-project/foldy
+#    path: charts/cert-manager
+
+traefik:
+    enabled: true
+    repoURL: https://github.com/foldy-project/foldy
+    path: charts/traefik
+
+community:
+    enabled: false
+    repoURL: https://github.com/foldy-project/foldy-community-server
+    path: chart

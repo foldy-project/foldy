@@ -1,0 +1,77 @@
+#
+# Foldy CLI example config
+#
+# Place this file at $HOME/.foldy/config.yaml to be loaded by
+# the foldy CLI.
+#
+
+
+# If true, all mutating commands are printed to stdout.
+# Verbose has a special meaning in the foldy CLI. There is the
+# guarantee that all mutating commands are bash commands.
+# allowing the user to easily observe and understand the
+# underlying operations when verbose output is enabled.
+#
+# The CLI attempts to provide both convenience and education.
+# It should not obscure what is happening to your cluster.
+# Rather, it should make complicated installation procedures
+# and other interactions more observable.
+verbose: true
+
+argocd:
+  # Image override for Argo CD. The current deployment does
+  # not ship with Helm v3+ support, and this is a fix.
+  image: argoproj/argocd:v1.5.0-rc1
+
+ingress:
+  # Permit services to be accessed from the outside world. 
+  enabled: true
+
+  # If true, disables SSL globally. This is *highly* not
+  # recommended as cert-manager is supposed to be make it
+  # very easy to generate TLS certificates. This feature
+  # is provided merely to be exhaustive. You are encouraged
+  # to use the `auto: true` feature mentioned below.
+  insecure: false
+
+  # If true, generate ad hoc ingress through foldy.dev for
+  # services that do not have hosts manually specified. This
+  # is a free service provided by the developers to encourage
+  # use of foldy in research environments.
+  # The generated endpoint will be assigned a name, such as
+  # "crazy-badger", and expose various services with TLS as
+  # subdomains of crazy-badger.foldy.dev
+  auto: true
+
+  api:
+    enabled: true
+    insecure: false
+    #host: api.example.mydomain.com # Uncomment to override auto
+
+  argocd:
+    enabled: true
+    insecure: false
+    #host: argocd.example.mydomain.com # Uncomment to override auto
+  
+  events:
+    # Note: events ingress is only used for continuous integration
+    # If one does not wish to contribute to foldy, it's not needed.
+    enabled: false
+    insecure: false
+    #host: argocd.example.mydomain.com # Uncomment to override auto
+
+  ui:
+    enabled: true
+    insecure: false
+    #host: ui.example.mydomain.com # Uncomment to override auto
+
+certmanager:
+  enabled: true
+
+ci:
+  # Continuous Integration
+
+# Some parts of the foldy CLI utilize DNS automation to simplify
+# ingress. This can be set to an empty string if one wishes to
+# avoid contacting the community server for whatever reason.
+communityApiEndpoint: https://community.foldy.dev

@@ -1,0 +1,14 @@
+apiVersion: app.foldy.dev/v1alpha1
+kind: Experiment
+metadata:
+  name: example-experiment
+spec:
+  dataset: example-dataset
+  backend:
+    name: example-backend
+    settings:
+      integrator: md
+      seed: 123456789
+      coupleIntramol: true
+      nsteps: 100
+      dt: 0.002

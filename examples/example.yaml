@@ -1,0 +1,109 @@
+apiVersion: app.foldy.dev/v1alpha1
+kind: Backend
+metadata:
+  name: my-gromacs-backend
+spec:
+  image: foldy/gromacs:latest
+  minSize: 2 # Keep two workers open constantly. This improves performance.
+  maxSize: 4 # Run up to four experiments concurrently, creating up to two additional transient pods to run additional experiments
+  inputFormat: pdb # also available: mmCIF
+  proteinNet: true # supply the ProteinNet records as input
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+---
+apiVersion: app.foldy.dev/v1alpha1
+kind: Transform
+metadata:
+  name: fix-missing-atoms
+spec:
+  image: foldy/transform:latest
+  command: ["./transform", "fix-missing-atoms"]
+  minSize: 2
+  maxSize: 2 # Keep all pods open for max performance
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 200m
+---
+apiVersion: app.foldy.dev/v1alpha1
+kind: Transform
+metadata:
+  name: superimpose-residues
+spec:
+  image: foldy/transform:latest
+  command: ["./transform", "superimpose-residues"]
+  minSize: 1
+  maxSize: 1
+  resources:
+    limits:
+      memory: 1024Mi # More memory for the model
+      cpu: 500m
+---
+apiVersion: app.foldy.dev/v1alpha1
+kind: Experiment
+metadata:
+  name: basic-em
+spec:
+  backend:
+    name: my-gromacs-backend
+    spec:
+      seed: -1
+      nsteps: 100
+      integrator: md
+      dt: 0.0002
+  pdbs: # run on specific PDBs
+    - 1aki
+    - 2l0e
+  transform:
+    - name: fix-missing-atoms
+    - name: superimpose-residues
+  video: # create a video for each PDB
+    format: webm
+    duration: 10s
+    width: 800
+    height: 600
+    fps: 30
+---
+apiVersion: app.foldy.dev/v1alpha1
+kind: Model
+metadata:
+  name: my-model
+  storage:
+    - bucket: my-bucket
+      endpoint: http://foldy-controller-minio
+      prefix: backup/my-model/
+spec:
+  experiment: basic-em # Model the experiment
+  #image: foldy/trainer:latest
+  #deepspeed:
+  #  enabled: true # use DeepSpeed for our huge model
+  #  fp16: true # use fp16
+  #  zeroOptimization: true # use Zero Redundancy Optimizer (ZeRO)
+  resources: # resources per trial
+    gpu: 1
+    cpu: 4
+  config:
+    # Specify any custom values in here. They will be available
+    # in `spec.config` when `eval:` is used.
+    alpha:
+      gridSearch: [0.95, 0.98, 0.99]
+      # the above is equivalent to:
+      #eval: "tune.grid_search([0.95, 0.98, 0.99])"
+  optimizer:
+    minibatchSize: 128
+    type: "adam"
+    adam:
+      b1:
+        uniform:
+          min: 0.0
+          max: 0.02
+      b2:
+        eval: "tune.sample_from(lambda spec: spec.config.alpha * np.random.normal())"
+    lr:
+      gridSearch:
+        - 0.0001
+        - 0.001
+        - 0.002
+        - 0.005

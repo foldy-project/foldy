@@ -1,0 +1,5 @@
+additionalArguments:
+- --providers.kubernetesingress=true
+- --providers.kubernetesingress.ingressclass=traefik2
+
+additionalArguments[0]=--providers.kubernetesingress=true,additionalArguments[1]=--providers.kubernetesingress.ingressclass=traefik2

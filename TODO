@@ -1,0 +1,51 @@
+General
+    - Nav path in top left
+    - page title in top right
+    - password login
+    - logout
+Testing
+    - navigation test
+Experiments page
+    - New Experiment wizard
+    - options for layout
+    - filters/search
+    - context menu for right-side 'vertical more' button on list items
+Experiment page
+    - visualizations (feature of backend)
+        - video of simulation
+        - custom visualizations
+    - Hardware monitoring
+        - list pods running the trials
+        - data throughput (trials/minute)
+        - cpu/memory graphs
+    - Manifest details
+    - Delete button
+    - List and describe individual trials
+Models page
+    - New Model wizard
+    - options for layout
+    - filters/search
+    - context menu for right-side 'vertical more' button on list items
+Model page
+    - visualizations
+        - start tensorboard
+    - hardware monitoring
+    - Manifest details
+    - Delete button
+Datasets page
+    - New Dataset wizard
+    - Manifest details
+    - Delete button
+Backends page
+    - New Backend wizard
+    - Manifest details
+    - Delete button
+    - Sync status (through Argo CD)
+    - Hardware monitoring
+        - filter by experiment
+        - list pods running the trials
+        - data throughput (trials/minute)
+        - cpu/memory graphs
+    - context menu for right-side 'vertical more' button on list items
+
+Investigate use of sacred for persistent storage of experiment info

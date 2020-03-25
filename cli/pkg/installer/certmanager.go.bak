@@ -1,0 +1,42 @@
+package installer
+
+import (
+	"fmt"
+	"strings"
+)
+
+func init() {
+	AddComponent(&CustomComponent{
+		Name: "cert-manager",
+		CRDs: []string{
+			"certificaterequests.cert-manager.io",
+			"certificates.cert-manager.io",
+			"challenges.acme.cert-manager.io",
+			"clusterissuers.cert-manager.io",
+			"issuers.cert-manager.io",
+			"orders.acme.cert-manager.io",
+		},
+		Install: func(s *Installer) error {
+			if err := s.createNamespace("cert-manager"); err != nil {
+				return err
+			}
+			// https://cert-manager-munnerz.readthedocs.io/en/stable/admin/resource-validation-webhook.html
+			if err := s.exec("kubectl label namespace cert-manager certmanager.k8s.io/disable-validation=true"); err != nil {
+				msg := fmt.Sprintf("'certmanager.k8s.io/disable-validation' already has a value (true), and --overwrite is false")
+				if !strings.Contains(strings.TrimSpace(err.Error()), msg) {
+					return err
+				}
+			}
+			if err := s.exec("kubectl apply --validate=false -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.14/deploy/manifests/00-crds.yaml"); err != nil {
+				return err
+			}
+			if err := s.exec("kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v0.14.0/cert-manager.yaml"); err != nil {
+				return err
+			}
+			return nil
+		},
+		Uninstall: func(s *Installer) error {
+			return s.deleteNamespace("cert-manager")
+		},
+	})
+}

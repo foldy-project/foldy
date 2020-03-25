@@ -1,0 +1,29 @@
+package installer
+
+func init() {
+	AddComponent(&ApplicationComponent{
+		Name:    "argo",
+		RepoURL: "https://github.com/argoproj/argo-helm.git",
+		Path:    "charts/argo",
+		CRDs: []string{
+			"cronworkflows.argoproj.io",
+			"workflows.argoproj.io",
+			"workflowtemplates.argoproj.io",
+		},
+	})
+}
+
+//func (s *Installer) InstallArgo() error {
+//if err := s.createNamespace("argo"); err != nil {
+//	return err
+//}
+//// Install the yaml
+//if err := s.exec("kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo/stable/manifests/install.yaml"); err != nil {
+//	return err
+//}
+//return nil
+//}
+
+//func (s *Installer) UninstallArgo() error {
+//	return s.DeleteApplication("argo")
+//}
