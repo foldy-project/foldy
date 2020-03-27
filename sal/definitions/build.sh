@@ -13,10 +13,9 @@ gen() {
     -out ./${name}.rs \
     -ignore Ignorer \
     ./definitions.go
-  docker run -v C:/Users/tlhavlik/go/src/github.com/foldy-project/foldy/sal/definitions:/data rust:rustfmt rustfmt /data/${name}.rs
+  rustfmt ${name}.rs
   mv ${name}.rs $out
 }
 gen types
-gen server
-gen blocking_client
+gen server_actixweb
 

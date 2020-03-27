@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="CPP_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/sal/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sal/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sal/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/sal/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/drivers/gromacs/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/drivers/gromacs/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/drivers/gromacs/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/drivers/gromacs/benches" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/drivers/gromacs/target" />
+      <excludeFolder url="file://$MODULE_DIR$/sal/target" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

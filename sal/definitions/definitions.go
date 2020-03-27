@@ -1,10 +1,42 @@
 package definitions
 
 type Backend interface {
+	// Run the experiment
 	Run(RunRequest) RunResponse
+
+	// Run some tests to ensure internal consistency
 	Test(TestRequest) TestResponse
+
+	// Produce a visualization
+	Visualize(VisualizeRequest) VisualizeResponse
 }
 
+type Atom struct {
+	ID      string  `json:"id,omitempty"`
+	Element string  `json:"element"`
+	X       float32 `json:"x"`
+	Z       float32 `json:"y"`
+	Y       float32 `json:"z"`
+}
+
+type Residue struct {
+	Atoms []Atom `json:"atoms"`
+}
+
+type Chain struct {
+	Residues []Residue `json:"residues"`
+}
+
+type Model struct {
+	Chains map[string]Chain `json:"chains"`
+}
+
+type Structure struct {
+	Models map[int]Model `json:"models"`
+}
+
+// Dataset -> Tranformation -> Transformation -> Backend
+// Received AFTER transformations
 type GromacsConfig struct {
 	NumSteps       int     `json:"numSteps"`                 // nsteps: Number of steps to run the experiment
 	Integrator     string  `json:"integrator,omitempty"`     // Algorithm (steep = steepest descent minimization). Default is "md"
@@ -16,19 +48,27 @@ type GromacsConfig struct {
 }
 
 type RunRequest struct {
-	StructureIDs []string               `json:"structureIds"`
-	Backend      string                 `json:"backend"` // e.g. "gromacs"
-	Config       map[string]interface{} `json:"config"`  // Backend config
-	Gromacs      []GromacsConfig        `json:"gromacs"`
-	//Configs      []map[string]GromacsConfig `json:"configs"`
+	ID      string                 `json:"id"`      // Run ID
+	Backend string                 `json:"backend"` // e.g. "gromacs"
+	Input   string                 `json:"input"`   // Input? TODO
+	Config  map[string]interface{} `json:"config"`  // Backend config
 }
 
 type RunResponse struct {
-	// Output information
+	// Experiment output information
 }
 
 type TestRequest struct {
 }
 
 type TestResponse struct {
+}
+
+type VisualizeRequest struct {
+	FPS       int `json:"fps"`
+	NumFrames int `json:"numFrames"`
+}
+
+type VisualizeResponse struct {
+	Resource string `json:"resource"` // URL to the webm file, https://[...].webm
 }
