@@ -171,6 +171,15 @@ spec:
     - name: examples-getter
       type: Function
       value: get-healer-training-examples # default value
+      signature:
+        inputs:
+          - name: batchSize
+            type: int
+        outputs:
+          - name: records
+            type: "[]ProteinNetRecord"
+          - name: structures
+            type: "[]Structure"
   outputs:
     - name: model
       type: Function
@@ -184,8 +193,17 @@ metadata:
 spec:
   image: foldy/gromacs:latest
   inputs:
-    - name: structures
-      type: "[]Structures"
+    - name: examples-getter
+      type: Function
+      signature:
+        inputs:
+          - name: batchSize
+            type: int
+        outputs:
+          # The examples-getter must return *at least* this
+          # field, but can return additional fields.
+          - name: structures
+            type: "[]Structure"
     # The 'type' field is optional if it can be inferred
     # from the default value.
     - name: integrator
@@ -198,15 +216,31 @@ spec:
       value: 0.0002
       #type: float64
   outputs:
-    # The aggregated frames from running the experiment on
-    # each input structure. Ugly 2D array is unavoidable.
-    - name: frames
-      type: "[][]Structure"
     # Expose a Function that can be used to retrieve a batch
     # of examples, similar to how proteinnet-generator works.
     # This Function accepts batchSize:int as an argument.
     - name: getter
       type: Function
+      signature:
+        inputs:
+          - name: batchSize
+            type: int
+        # We don't know all of the fields returned by the
+        # examples-getter so we aren't going to constrain
+        # the output type. In addition to passing through
+        # the original data unchanged, two fields are
+        # added to the output structure (see comments):
+        #outputs:
+          ## The aggregated frames from running the experiment
+          ## on each input structure. Ugly 2D array is unavoidable.
+          #- name: frames
+          #  type: "[][]Structure"
+          ## If non-empty, this will correspond with a null
+          ## entry in `frames` and offer an explanation.
+          ## For clarification:
+          ##   len(frames) == len(errors) == batchSize
+          #- name: errors
+          #  type: "[]string"
 ---
 # Returns training examples that have been normalized by a
 # healer model.
@@ -246,6 +280,96 @@ spec:
         - name: structures
           value: {{ steps.pdb.outputs.structures }}
 ---
+# A Function that exposes a getter Function yielding
+# examples passed through the model.
+apiVersion: app.foldy.dev/v1alpha1
+kind: Function
+metadata:
+  name: get-healed-examples
+spec:
+  image: foldy/gromacs:latest
+  inputs:
+    - name: model
+      type: Function
+    # We can constrain the signature of the function.
+      signature:
+        inputs:
+          - name: records
+            type: "[]ProteinNetRecord"
+          - name: structures
+            type: "[]Structure"
+        outputs:
+          - name: structures
+            type: "[]Structure"
+
+    # It is standard that an "examples getter" will accept
+    # batchSize:int, but we can be verbose and constrain
+    # the signature of accepted functions. This can also
+    # help catch errors. Note that we *can* pass in a
+    # function that accepts more parameters than we specify
+    # here so as long as they are already supplied upon
+    # call, e.g. by a default value.
+    - name: examples-getter
+      type: Function
+    # Designate a default value that can be overridden.
+      value: proteinnet-with-pdb
+      signature:
+        inputs:
+          - name: batchSize
+            type: int
+        outputs:
+          - name: records
+            type: "[]ProteinNetRecord"
+          - name: structures
+            type: "[]Structure"
+  outputs:
+    - name: getter
+      type: Function
+    # For clarity, we can annotate the signature.
+      signature:
+        inputs:
+          - name: batchSize
+            type: int
+        outputs:
+          - name: records
+            type: "[]ProteinNetRecord"
+          - name: structures
+            type: "[]Structure"
+---
+apiVersion: app.foldy.dev/v1alpha1
+kind: Function
+metadata:
+  name: model-experiment
+spec:
+  image: foldy/model-experiment:latest
+  inputs:
+    - name: examples-getter
+      type: Function
+      signature:
+        inputs:
+          - name: batchSize
+            type: int
+        outputs:
+          - name: records
+            type: "[]ProteinNetRecord"
+          - name: structures
+            type: "[]Structure"
+          - name: frames
+            type: "[][]Structure"
+          - name: errors
+            type: "[]string"
+  outputs:
+    - name: model
+      type: Function
+      inputs:
+        - name: records
+          type: "[]ProteinNetRecord"
+        - name: structures
+          type: "[]Structure"
+      outputs:
+        - name: frames
+          type: "[][]Structure"
+---
 apiVersion: app.foldy.dev/v1alpha1
 kind: Pipeline
 metadata:
@@ -257,22 +381,28 @@ spec:
   outputs:
     - name: model
       type: Function
+      value: {{ components.model.outputs.model }}
+      #signature:
+      #  inputs:
+      #  outputs:
   components:
+    # Train a network that can produce a normalized ("healed")
+    # PDB file given ProteinNet records and their raw PDB files.
     - name: healer
       function: train-structure-healer
-      arguments:
-        - name: examples-getter
-          value: get-healer-training-examples
-    # We need a component that runs the healer model over
-    # the original dataset. This Function exposes a getter
-    # just like the "gen" step seen in other Pipelines.
+    # Create a generator that returns ProteinNet records
+    # augmented with their "healed" PDB structures.
+    # This Function needs to utilize the model yielded by
+    # the previous step.
     - name: gen
       function: get-healed-examples
       arguments:
-        - name: examples-getter
-          value: get-healer-training-examples
         - name: model
           value: {{ components.healer.outputs.model }}
+    # Run an experiment that utilizes the generator as its
+    # source for structures. This is a basic energy minim
+    # setup in GROMACS that yields a novel Structure for
+    # each frame of the simulation.
     - name: experiment
       function: gromacs-energy-minimization
       arguments:
@@ -285,8 +415,10 @@ spec:
         # The Function used by the experiment exposes a
         # "getter" Function in its output that can be used
         # to retrieve training examples "through" the
-        # experiment. Its signature is identical to other
+        # experiment by introducing additional fields for
+        # the frame data. Its signature is identical to other
         # examples-getters, namely that it accepts batchSize
-        # and returns the examples as arrays.
+        # and returns the examples as arrays. The fields
+        # "frames" and "errors" are introduced into the
+        # object returned by the experiment's examples-getter.
           value: {{ components.experiment.outputs.getter }}
-
