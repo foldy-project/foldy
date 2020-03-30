@@ -1,0 +1,292 @@
+# These definitions are made globally available to all
+# functions.
+apiVersion: app.foldy.dev/v1alpha1
+kind: Definition
+metadata:
+  name: pdb-definitions
+spec:
+  definitions: |
+    type Atom struct {
+        ID      string  `json:"id,omitempty"`
+        Element string  `json:"element"`
+        X       float32 `json:"x"`
+        Z       float32 `json:"y"`
+        Y       float32 `json:"z"`
+    }
+
+    type Residue struct {
+        Name  string  `json:"name"`
+        Atoms []Atom  `json:"atoms"`
+    }
+
+    type Chain struct {
+        Residues []Residue `json:"residues"`
+    }
+
+    type Model struct {
+        Chains map[string]Chain `json:"chains"`
+    }
+
+    type Structure struct {
+        Models map[int]Model `json:"models"`
+    }
+
+    type ProteinNetRecord struct {
+      ID      string  `json:"id"`
+      ModelID int     `json:"modelId"`
+      ChainID string  `json:"chainId"`
+      Primary string  `json:"primary"`
+      Mask    string  `json:"mask"`
+    }
+
+    type ProteinNetGeneratorRequest struct {
+      BatchSize int `json:"batchSize"`
+    }
+
+    type ProteinNetGeneratorResponse struct {
+      Records []ProteinNetRecord `json:"records"`
+    }
+---
+# An example Function that retrieves a random batch of
+# ProteinNet records.
+apiVersion: app.foldy.dev/v1alpha1
+kind: Function
+metadata:
+  name: proteinnet-generator
+spec:
+  image: foldy/proteinnet:latest
+  command: [serve-proteinnet]
+  #input: ProteinNetGeneratorRequest
+  #output: ProteinNetGeneratorResponse
+  inputs:
+    - name: batchSize # json name
+      type: int # Go type
+  outputs:
+    - name: records
+      # Some yaml syntax highlighters have issues with
+      # parsing the brackets, so the value is wrapped
+      # in quotes, also demonstrating that it's acceptable.
+      type: "[]ProteinNetRecord"
+      optional: false # Default: false (toggle for omitempty)
+---
+# A function that augments ProteinNet records with their
+# PDB structures.
+apiVersion: app.foldy.dev/v1alpha1
+kind: Function
+metadata:
+  name: proteinnet-pdb-augment
+spec:
+  image: foldy/proteinnet:latest
+  command: [get-structures]
+  inputs:
+    # The ProteinNet examples
+    - name: records
+      type: "[]ProteinNetRecord"
+  outputs:
+    # The structures retrieved from wwpdb
+    - name: structures
+      type: "[]Structure"
+    # The same ProteinNet examples, but some may have been
+    # dropped to cope with error. TODO: sane error handling
+    - name: records
+      type: "[]ProteinNetRecord"
+  cache:
+    # TODO: this function is stateless and can be cached
+    policy: Stateless
+    memory: 256Mi
+---
+# A special kind of function that composes multiple functions
+apiVersion: app.foldy.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: get-healer-training-examples
+spec:
+  inputs:
+    - name: batchSize
+      type: int
+  outputs:
+    - name: records
+      type: "[]ProteinNetRecord"
+      value: {{ steps.filter.output.records }}
+    - name: structures
+      type: "[]Structure"
+      value: {{ steps.filter.output.structures }}
+  steps:
+    - name: gen
+      function: proteinnet-generator
+      arguments:
+        - name: batchSize
+          value: {{ inputs.batchSize }}
+    - name: pdb
+      function: proteinnet-pdb-augment
+      arguments:
+        - name: records
+          value: {{ steps.gen.outputs.records }}
+    - name: filter
+      function: filter-broken
+      arguments:
+        - name: records
+          value: {{ steps.pdb.outputs.records }}
+        - name: structures
+          value: {{ steps.pdb.outputs.structures }}
+---
+# Filter the batch so we only have complete chains with
+# no missing atoms. These will serve as ground truth for
+# predicting locations of missing residues.
+apiVersion: app.foldy.dev/v1alpha1
+kind: Function
+metadata:
+  name: filter-broken
+spec:
+  image: foldy/proteinnet:latest
+  command: [filter-broken]
+  inputs:
+    - name: records
+      type: "[]ProteinNetRecord"
+    - name: structures
+      type: "[]Structure"
+  outputs:
+    - name: records
+      type: "[]ProteinNetRecord"
+    - name: structures
+      type: "[]Structure"
+    # The mask over the input examples used to generate
+    # the filtered outputs.
+    - name: mask
+      type: "[]bool"
+---
+# A Function that accepts examples of contiguous chains
+# and produces a model that can predict the locations of
+# missing atoms and residues, effectively "healing" a
+# structure such that it has correspondence with to its
+# ProteinNet primary sequence.
+apiVersion: app.foldy.dev/v1alpha1
+kind: Function
+metadata:
+  name: train-structure-healer
+spec:
+  image: foldy/proteinnet:latest
+  command: [filter-non-continguous]
+  inputs:
+    - name: examples-getter
+      type: Function
+      value: get-healer-training-examples # default value
+  outputs:
+    - name: model
+      type: Function
+---
+# A Function that runs an energy minimization simulation
+# in GROMACS for a single Structure.
+apiVersion: app.foldy.dev/v1alpha1
+kind: Function
+metadata:
+  name: gromacs-energy-minimization
+spec:
+  image: foldy/gromacs:latest
+  inputs:
+    - name: structures
+      type: "[]Structures"
+    # The 'type' field is optional if it can be inferred
+    # from the default value.
+    - name: integrator
+      value: md
+      #type: string
+    - name: numFrames
+      value: 30
+      #type: int64
+    - name: deltaTime
+      value: 0.0002
+      #type: float64
+  outputs:
+    # The aggregated frames from running the experiment on
+    # each input structure. Ugly 2D array is unavoidable.
+    - name: frames
+      type: "[][]Structure"
+    # Expose a Function that can be used to retrieve a batch
+    # of examples, similar to how proteinnet-generator works.
+    # This Function accepts batchSize:int as an argument.
+    - name: getter
+      type: Function
+---
+# Returns training examples that have been normalized by a
+# healer model.
+apiVersion: app.foldy.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: get-healed-training-examples
+spec:
+  inputs:
+    - name: healer
+      type: Function
+    - name: batchSize
+      type: int
+  outputs:
+    - name: records
+      type: "[]ProteinNetRecord"
+      value: {{ steps.pdb.output.records }}
+    - name: structures
+      type: "[]Structure"
+      value: {{ steps.heal.output.structures }}
+  steps:
+    - name: gen
+      function: proteinnet-generator
+      arguments:
+        - name: batchSize
+          value: {{ inputs.batchSize }}
+    - name: pdb
+      function: proteinnet-pdb-augment
+      arguments:
+        - name: records
+          value: {{ steps.gen.outputs.records }}
+    - name: heal
+      function: {{ .inputs.healer }}
+      arguments:
+        - name: records
+          value: {{ steps.pdb.outputs.records }}
+        - name: structures
+          value: {{ steps.pdb.outputs.structures }}
+---
+apiVersion: app.foldy.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: model-em
+spec:
+  inputs:
+    - name: batchSize
+      type: int
+  outputs:
+    - name: model
+      type: Function
+  components:
+    - name: healer
+      function: train-structure-healer
+      arguments:
+        - name: examples-getter
+          value: get-healer-training-examples
+    # We need a component that runs the healer model over
+    # the original dataset. This Function exposes a getter
+    # just like the "gen" step seen in other Pipelines.
+    - name: gen
+      function: get-healed-examples
+      arguments:
+        - name: examples-getter
+          value: get-healer-training-examples
+        - name: model
+          value: {{ components.healer.outputs.model }}
+    - name: experiment
+      function: gromacs-energy-minimization
+      arguments:
+        - name: examples-getter
+          value: {{ components.gen.outputs.getter }}
+    - name: model
+      function: model-experiment
+      arguments:
+        - name: examples-getter
+        # The Function used by the experiment exposes a
+        # "getter" Function in its output that can be used
+        # to retrieve training examples "through" the
+        # experiment. Its signature is identical to other
+        # examples-getters, namely that it accepts batchSize
+        # and returns the examples as arrays.
+          value: {{ components.experiment.outputs.getter }}
+

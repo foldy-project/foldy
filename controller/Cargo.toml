@@ -1,0 +1,26 @@
+[package]
+name = "foldy-functions-controller"
+version = "0.1.0"
+authors = ["Tom Havlik <keres993@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+kube = { git = "https://github.com/clux/kube-rs.git" }
+kube-derive = { git = "https://github.com/clux/kube-rs.git" }
+k8s-openapi = { version = "0.7.1", default-features = false, features = ["v1_15"] }
+serde = "1.0.79"
+serde_derive = "1.0.79"
+serde_json = "1.0.39"
+serde_yaml = "0.8.5"
+tokio = { version = "0.2.11", features = ["full"] }
+reqwest = { version = "0.10.4", features = ["json"] }
+log = "0.4.8"
+env_logger = "0.7.1"
+async-trait = "0.1.26"
+actix-web = "2"
+actix-rt = "1"
+thiserror = "1.0.10"
+[dependencies.futures]
+version = "0.3.1"
+[lib]
+bench = false

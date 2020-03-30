@@ -16,7 +16,7 @@ spec:
     targetRevision: HEAD
     path: {{ .Values.controller.path }}
     helm:
-        releaseName: {{ .Release.Name }}-controller
+      releaseName: {{ .Release.Name }}-controller
 
   # Destination cluster and namespace to deploy the application
   destination:

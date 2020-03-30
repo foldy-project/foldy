@@ -1,6 +1,0 @@
-# Foldy Operator
-
-TODO
-
-
-

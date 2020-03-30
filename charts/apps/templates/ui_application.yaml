@@ -18,10 +18,10 @@ spec:
     targetRevision: HEAD
     path: {{ .Values.ui.path }}
     helm:
-        releaseName: {{ .Release.Name }}
-        values: |
-          ingress:
-            clusterIssuerName: {{ .Release.Name }}-letsencrypt-prod
+      releaseName: {{ .Release.Name }}
+      values: |
+        ingress:
+          clusterIssuerName: {{ .Release.Name }}-letsencrypt-prod
 
   # Destination cluster and namespace to deploy the application
   destination:
