@@ -3,4 +3,5 @@ default-members = ["sal", "drivers/gromacs"]
 members = [
   "sal",
   "drivers/gromacs",
+  "proteinnet",
 ]

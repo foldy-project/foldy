@@ -10,7 +10,12 @@
       <sourceFolder url="file://$MODULE_DIR$/drivers/gromacs/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/drivers/gromacs/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/drivers/gromacs/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/proteinnet/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/proteinnet/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/proteinnet/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/proteinnet/benches" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/drivers/gromacs/target" />
+      <excludeFolder url="file://$MODULE_DIR$/proteinnet/target" />
       <excludeFolder url="file://$MODULE_DIR$/sal/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
