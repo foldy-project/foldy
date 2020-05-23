@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: foldy-operator-test
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: foldy-operator-test
+    spec:
+      restartPolicy: Never
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+              claimName: foldy-data
+      containers:
+      - name: foldy-operator-test
+        imagePullPolicy: Always
+        image: thavlik/foldy-operator-test:latest
+        args: ["-run", "TestCreateVideo"]
+        resources:
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        volumeMounts:
+          - name: data
+            mountPath: /data
+        env:
+          - name: FOLDY_OPERATOR
+            value: foldy-operator:8090
+          - name: TIMEOUT
+            value: 12h
+          - name: CONCURRENCY
+            value: '1'
+          - name: PDB_ID
+            value: 4a5u
+          - name: MODEL_ID
+            value: "1"
+          - name: CHAIN_ID
+            value: A
+          - name: PRIMARY
+            value: MHHHHHHGSSQLLPAPLTNDPTAIGPVLPFEELHPRRYPENTATFLTRLRSLPSNHLPQPTLNCLLSAVSDQTKVSEEHLWESLQTILPDSQLSNEETNTLGLSTEHLTALAHLYNFQATVYSDRGPILFGPSDTIKRIDITHTTGPPSHFSPGKRLLGS
+          - name: MASK
+            value: ------------++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            

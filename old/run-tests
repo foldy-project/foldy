@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euo pipefail
+cd $(dirname "$0")/test
+kubectl delete job tail-null || true
+kubectl delete job foldy-operator-test || true
+./build.sh
+kubectl apply -f test.yaml
+watch -n 5 "kubectl get pod"

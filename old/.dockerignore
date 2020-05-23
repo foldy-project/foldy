@@ -1,0 +1,6 @@
+deployment.yaml
+Dockerfile
+.vscode/
+./foldy-operator
+test/
+png/
